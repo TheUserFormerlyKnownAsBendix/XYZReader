@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<items version="2" >
+
+    <item
+        jar="/home/bendix/.gradle/caches/modules-2/files-2.1/com.squareup.okhttp/okhttp/2.5.0/4de2b4ed3445c37ec1720a7d214712e845a24636/okhttp-2.5.0.jar"
+        jumboMode="false"
+        revision="23.0.1"
+        sha1="4de2b4ed3445c37ec1720a7d214712e845a24636">
+        <dex dex="/home/bendix/Dev/Android/xyzreader/XYZReader/build/intermediates/pre-dexed/debug/okhttp-2.5.0-af48e5ef989ab127d68d4bb6de111eb96310201f.jar" />
+    </item>
+    <item
+        jar="/home/bendix/.gradle/caches/modules-2/files-2.1/com.squareup.okio/okio/1.6.0/98476622f10715998eacf9240d6b479f12c66143/okio-1.6.0.jar"
+        jumboMode="false"
+        revision="23.0.1"
+        sha1="98476622f10715998eacf9240d6b479f12c66143">
+        <dex dex="/home/bendix/Dev/Android/xyzreader/XYZReader/build/intermediates/pre-dexed/debug/okio-1.6.0-fc94eb5c816fcd3809ea1ff420456eb2cd2f7817.jar" />
+    </item>
+
+</items>
