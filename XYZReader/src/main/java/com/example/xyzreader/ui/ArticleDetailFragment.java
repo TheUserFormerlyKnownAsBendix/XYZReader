@@ -311,7 +311,6 @@ public class ArticleDetailFragment extends Fragment implements
             orig.fab_size = new Point(fab.getWidth(), fab.getHeight());
             orig.container_size = new Point(fab_container.getWidth(), fab_container.getHeight());
             orig.fab_position = new Point((int) fab.getX(), (int) fab.getY());
-
             AnimatorPath path = new AnimatorPath();
             path.moveTo(orig.fab_position.x, 0);
             path.curveTo(
