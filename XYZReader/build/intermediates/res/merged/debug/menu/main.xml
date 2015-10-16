@@ -3,4 +3,4 @@
         android:id="@+id/refresh"
         android:title="@string/action_refresh" />
 </menu>
-<!-- From: file:/home/bendix/Dev/Android/xyzreader/XYZReader/src/main/res/menu/main.xml -->
+<!-- From: file:/Users/bendix/Dev/Android/XYZReader/XYZReader/src/main/res/menu/main.xml -->

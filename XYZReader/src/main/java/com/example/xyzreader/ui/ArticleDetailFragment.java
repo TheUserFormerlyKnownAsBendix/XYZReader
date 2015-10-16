@@ -5,13 +5,20 @@ import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
 import android.app.Fragment;
 import android.app.LoaderManager;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
+import android.content.Intent;
 import android.content.Loader;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.Point;
 import android.graphics.Rect;
 import android.graphics.drawable.ColorDrawable;
+import android.net.Uri;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v7.graphics.Palette;
@@ -25,15 +32,21 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.AccelerateDecelerateInterpolator;
 import android.view.animation.AccelerateInterpolator;
+import android.view.animation.DecelerateInterpolator;
 import android.widget.FrameLayout;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.ImageLoader;
 import com.example.xyzreader.R;
 import com.example.xyzreader.data.ArticleLoader;
+import com.google.android.gms.plus.PlusShare;
+
+import java.util.List;
 
 /**
  * A fragment representing a single Article detail screen. This fragment is
@@ -67,6 +80,9 @@ public class ArticleDetailFragment extends Fragment implements
     private FrameLayout fab_container;
     private LinearLayout share_container;
     private Point animation_value;
+    private ObjectAnimator animator;
+    private boolean share_visible = false;
+    private boolean fab_animation_started = false;
 
     private static int FAB_ANIM_TIME = 200;
     private static int CONTAINER_ANIM_TIME = 100;
@@ -81,6 +97,13 @@ public class ArticleDetailFragment extends Fragment implements
     }
 
     private AnimationProperties orig;
+
+    private ImageButton share_email;
+    private ImageButton share_copy;
+    private ImageButton share_google;
+    private ImageButton share_facebook;
+    private ImageButton share_twitter;
+
 
     /**
      * Mandatory empty constructor for the fragment manager to instantiate the
@@ -147,6 +170,8 @@ public class ArticleDetailFragment extends Fragment implements
                 getActivityCast().onUpButtonFloorChanged(mItemId, ArticleDetailFragment.this);
                 mPhotoContainerView.setTranslationY((int) (mScrollY - mScrollY / PARALLAX_FACTOR));
                 updateStatusBar();
+
+                revertFabTransition();
             }
         });
 
@@ -169,6 +194,11 @@ public class ArticleDetailFragment extends Fragment implements
             }
         });
 
+        share_email = (ImageButton) mRootView.findViewById(R.id.share_email);
+        share_copy = (ImageButton) mRootView.findViewById(R.id.share_copy);
+        share_google = (ImageButton) mRootView.findViewById(R.id.share_google);
+        share_facebook = (ImageButton) mRootView.findViewById(R.id.share_facebook);
+        share_twitter = (ImageButton) mRootView.findViewById(R.id.share_twitter);
 
         bindViews();
         updateStatusBar();
@@ -177,83 +207,176 @@ public class ArticleDetailFragment extends Fragment implements
 
     private void revertFabTransition() {
 
+        if(share_visible && !fab_animation_started) {
+
+            Log.e("test", "Called revertFabTransition");
+
+            fab_animation_started = true;
+
+            AnimatorPath path = new AnimatorPath();
+            path.moveTo(fab.getX(), orig.container_size.y - orig.fab_size.y);
+            path.curveTo(
+                    (orig.screen_size.x / 4) * 3 - orig.fab_size.y / 2, orig.container_size.y - orig.fab_size.y,
+                    orig.fab_position.x, orig.container_size.y - orig.fab_size.y,
+                    orig.fab_position.x, orig.fab_position.y
+            );
+
+            animator = ObjectAnimator.ofObject(this, null, new PathEvaluator(), path.getPoints().toArray());
+            animator.setInterpolator(new DecelerateInterpolator());
+            animator.setDuration(FAB_ANIM_TIME);
+            animator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+                @Override
+                public void onAnimationUpdate(ValueAnimator animation) {
+                    PathPoint p = (PathPoint) animation.getAnimatedValue();
+
+                    ViewGroup.LayoutParams params = fab_container.getLayoutParams();
+                    params.height = (int) (orig.container_size.y - p.mY);
+                    fab_container.setLayoutParams(params);
+
+                    fab.setX(p.mX);
+                    fab.setY(0);
+                }
+            });
+            animator.addListener(new Animator.AnimatorListener() {
+                @Override
+                public void onAnimationStart(Animator animation) {
+                    fab.setImageAlpha(255);
+                    share_bar.setVisibility(View.GONE);
+                }
+
+                @Override
+                public void onAnimationEnd(Animator animation) {
+                    fab_animation_started = false;
+                    share_visible = false;
+                }
+
+                @Override
+                public void onAnimationCancel(Animator animation) {
+
+                }
+
+                @Override
+                public void onAnimationRepeat(Animator animation) {
+
+                }
+            });
+
+            for (int i = 0; i < share_container.getChildCount(); i++) {
+                View v = share_container.getChildAt(i);
+                v.animate().setInterpolator(new AccelerateDecelerateInterpolator()).scaleX(0).scaleY(0).setDuration(CHILDREN_ANIM_TIME).setStartDelay(i * CHILDREN_ANIM_DELAY/2);
+            }
+
+            fab.animate().setDuration(CONTAINER_ANIM_TIME).scaleX(1).scaleY(1).setListener(new Animator.AnimatorListener() {
+                @Override
+                public void onAnimationStart(Animator animation) {
+
+                }
+
+                @Override
+                public void onAnimationEnd(Animator animation) {
+                    animator.start();
+                }
+
+                @Override
+                public void onAnimationCancel(Animator animation) {
+
+                }
+
+                @Override
+                public void onAnimationRepeat(Animator animation) {
+
+                }
+            });
+
+        }
+
     }
 
     private void startFabTransition() {
 
-        // https://github.com/saulmm/Curved-Fab-Reveal-Example
+        //Adapted this example https://github.com/saulmm/Curved-Fab-Reveal-Example
+        //to replicate this animation (well, more or less): http://material-design.storage.googleapis.com/publish/material_v_4/material_ext_publish/0B8v7jImPsDi-clFldXpZMmNhM0U/components-buttons-fab-transition_toolbar_01.mp4
 
-        Display display = getActivity().getWindowManager().getDefaultDisplay();
-        Point size = new Point();
-        display.getSize(size);
+        if(!share_visible && !fab_animation_started) {
 
-        orig = new AnimationProperties();
-        orig.screen_size = size;
-        orig.fab_size = new Point(fab.getWidth(), fab.getHeight());
-        orig.container_size = new Point(fab_container.getWidth(), fab_container.getHeight());
-        orig.fab_position = new Point((int)fab.getX(), (int)fab.getY());
+            fab_animation_started = true;
+            share_visible = true;
 
-        AnimatorPath path = new AnimatorPath();
-        path.moveTo(orig.fab_position.x, 0);
-        path.curveTo(
-                orig.fab_position.x, orig.container_size.y - orig.fab_size.y,
-                (orig.screen_size.x / 4) * 3 - orig.fab_size.y / 2, orig.container_size.y - orig.fab_size.y,
-                orig.screen_size.x / 2 - orig.fab_size.y / 2, orig.container_size.y - orig.fab_size.y
-        );
+            Display display = getActivity().getWindowManager().getDefaultDisplay();
+            Point size = new Point();
+            display.getSize(size);
 
-        final ObjectAnimator animator = ObjectAnimator.ofObject(this, "animation_value", new PathEvaluator(), path.getPoints().toArray());
+            orig = new AnimationProperties();
+            orig.screen_size = size;
+            orig.fab_size = new Point(fab.getWidth(), fab.getHeight());
+            orig.container_size = new Point(fab_container.getWidth(), fab_container.getHeight());
+            orig.fab_position = new Point((int) fab.getX(), (int) fab.getY());
 
-        animator.setInterpolator(new AccelerateInterpolator());
-        animator.setDuration(FAB_ANIM_TIME);
-        animator.start();
+            AnimatorPath path = new AnimatorPath();
+            path.moveTo(orig.fab_position.x, 0);
+            path.curveTo(
+                    orig.fab_position.x, orig.container_size.y - orig.fab_size.y,
+                    (orig.screen_size.x / 4) * 3 - orig.fab_size.y / 2, orig.container_size.y - orig.fab_size.y,
+                    orig.screen_size.x / 2 - orig.fab_size.y / 2, orig.container_size.y - orig.fab_size.y
+            );
 
-        fab.setImageAlpha(0);
+            animator = ObjectAnimator.ofObject(this, null, new PathEvaluator(), path.getPoints().toArray());
 
-        fab.animate().setStartDelay(FAB_ANIM_TIME).setDuration(CONTAINER_ANIM_TIME).setInterpolator(new AccelerateInterpolator()).scaleX(13f).scaleY(13f).setListener(new Animator.AnimatorListener() {
-            @Override
-            public void onAnimationStart(Animator animation) {
+            animator.setInterpolator(new AccelerateInterpolator());
+            animator.setDuration(FAB_ANIM_TIME);
+            animator.start();
 
-            }
+            fab.setImageAlpha(0);
 
-            @Override
-            public void onAnimationEnd(Animator animation) {
-                share_bar.setScaleX(1);
-                share_bar.setScaleY(1);
-                share_bar.setVisibility(View.VISIBLE);
-                share_bar.setBackgroundColor(getResources().getColor(R.color.accent_material_light));
+            fab.animate().setStartDelay(FAB_ANIM_TIME).setDuration(CONTAINER_ANIM_TIME).setInterpolator(new AccelerateInterpolator()).scaleX(13f).scaleY(13f).setListener(new Animator.AnimatorListener() {
+                @Override
+                public void onAnimationStart(Animator animation) {
 
-                for (int i = 0; i < share_container.getChildCount(); i++) {
-                    View v = share_container.getChildAt(i);
-                    v.animate().setInterpolator(new AccelerateDecelerateInterpolator()).scaleX(1).scaleY(1).setDuration(CHILDREN_ANIM_TIME).setStartDelay(i * CHILDREN_ANIM_DELAY);
                 }
-            }
 
-            @Override
-            public void onAnimationCancel(Animator animation) {
+                @Override
+                public void onAnimationEnd(Animator animation) {
+                    share_bar.setScaleX(1);
+                    share_bar.setScaleY(1);
+                    share_bar.setVisibility(View.VISIBLE);
+                    share_bar.setBackgroundColor(getResources().getColor(R.color.accent_material_light));
 
-            }
+                    for (int i = 0; i < share_container.getChildCount(); i++) {
+                        View v = share_container.getChildAt(i);
+                        v.animate().setInterpolator(new AccelerateDecelerateInterpolator()).scaleX(1).scaleY(1).setDuration(CHILDREN_ANIM_TIME).setStartDelay(i * CHILDREN_ANIM_DELAY);
+                    }
 
-            @Override
-            public void onAnimationRepeat(Animator animation) {
+                    fab_animation_started = false;
+                }
 
-            }
-        });
+                @Override
+                public void onAnimationCancel(Animator animation) {
 
-        animator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
-            @Override
-            public void onAnimationUpdate(ValueAnimator animation) {
+                }
 
-                PathPoint p = (PathPoint) animation.getAnimatedValue();
+                @Override
+                public void onAnimationRepeat(Animator animation) {
 
-                fab.setX(p.mX);
-                fab.setY(0);
+                }
+            });
 
-                ViewGroup.LayoutParams params = fab_container.getLayoutParams();
-                params.height = (int) (orig.container_size.y - p.mY);
-                fab_container.setLayoutParams(params);
+            animator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+                @Override
+                public void onAnimationUpdate(ValueAnimator animation) {
 
-            }
-        });
+                    PathPoint p = (PathPoint) animation.getAnimatedValue();
+
+                    ViewGroup.LayoutParams params = fab_container.getLayoutParams();
+                    params.height = (int) (orig.container_size.y - p.mY);
+                    fab_container.setLayoutParams(params);
+
+                    fab.setX(p.mX);
+                    fab.setY(0);
+
+                }
+            });
+
+        }
 
     }
 
@@ -332,6 +455,86 @@ public class ArticleDetailFragment extends Fragment implements
 
                         }
                     });
+
+            share_email.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    Intent i = new Intent(Intent.ACTION_SEND);
+                    i.setType("message/rfc822");
+                    i.putExtra(Intent.EXTRA_SUBJECT, mCursor.getString(ArticleLoader.Query.TITLE));
+                    i.putExtra(Intent.EXTRA_TEXT, "Check out this cool article [insert generic deep link]");
+                    startActivity(Intent.createChooser(i, "Send Email"));
+                    revertFabTransition();
+                }
+            });
+
+            share_copy.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    ClipboardManager clipboard = (ClipboardManager) getActivity().getSystemService(Context.CLIPBOARD_SERVICE);
+                    ClipData data = ClipData.newPlainText(mCursor.getString(ArticleLoader.Query.TITLE), "generic deep link");
+                    clipboard.setPrimaryClip(data);
+                    revertFabTransition();
+                    Toast.makeText(getActivity(), "Copied to clipboard!", Toast.LENGTH_SHORT).show();
+                }
+            });
+
+            share_google.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    Intent shareIntent = new PlusShare.Builder(getActivity())
+                            .setType("text/plain")
+                            .setText("Check out this cool article")
+                            .setContentUrl(Uri.parse("https://wwww.google.com"))
+                            .getIntent();
+                    startActivity(shareIntent);
+                    revertFabTransition();
+                }
+            });
+
+            share_facebook.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    Toast.makeText(getActivity(), "Too lazy to implement this", Toast.LENGTH_SHORT).show();
+                    revertFabTransition();
+                }
+            });
+
+            share_twitter.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+
+                    //Credit http://stackoverflow.com/a/14317559
+
+                    Intent i = new Intent(Intent.ACTION_SEND);
+                    i.putExtra(Intent.EXTRA_TEXT, "Check out this cool article [insert generic deep link]");
+                    i.setType("text/plain");
+
+                    PackageManager packManager = getActivity().getPackageManager();
+                    List<ResolveInfo> resolvedInfoList = packManager.queryIntentActivities(i,  PackageManager.MATCH_DEFAULT_ONLY);
+
+                    boolean resolved = false;
+                    for(ResolveInfo resolveInfo: resolvedInfoList) {
+                        if(resolveInfo.activityInfo.packageName.startsWith("com.twitter.android")){
+                            i.setClassName(resolveInfo.activityInfo.packageName, resolveInfo.activityInfo.name );
+                            resolved = true;
+                            break;
+                        }
+                    }
+                    if(resolved) {
+                        startActivity(i);
+                    } else {
+                        i = new Intent();
+                        i.putExtra(Intent.EXTRA_TEXT, "Check out this cool article [insert generic deep link]");
+                        i.setAction(Intent.ACTION_VIEW);
+                        i.setData(Uri.parse("https://twitter.com/intent/tweet?text=message&via=profileName"));
+                        startActivity(i);
+                    }
+
+                    revertFabTransition();
+                }
+            });
+
         } else {
             mRootView.setVisibility(View.GONE);
             titleView.setText("N/A");

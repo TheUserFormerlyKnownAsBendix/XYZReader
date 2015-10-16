@@ -110,6 +110,7 @@
                 android:orientation="horizontal">
 
                 <ImageButton
+                    android:id="@+id/share_email"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:src="@drawable/ic_email_white_24dp"
@@ -120,6 +121,7 @@
                     android:scaleY="0"/>
 
                 <ImageButton
+                    android:id="@+id/share_copy"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:src="@drawable/ic_content_copy_white_24dp"
@@ -130,6 +132,7 @@
                     android:scaleY="0"/>
 
                 <ImageButton
+                    android:id="@+id/share_google"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:src="@drawable/ic_google"
@@ -140,6 +143,7 @@
                     android:scaleY="0"/>
 
                 <ImageButton
+                    android:id="@+id/share_facebook"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:src="@drawable/ic_facebook"
@@ -150,6 +154,7 @@
                     android:scaleY="0"/>
 
                 <ImageButton
+                    android:id="@+id/share_twitter"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:src="@drawable/ic_twitter"
@@ -166,4 +171,4 @@
     </FrameLayout>
 
 </com.example.xyzreader.ui.DrawInsetsFrameLayout>
-<!-- From: file:/home/bendix/Dev/Android/xyzreader/XYZReader/src/main/res/layout/fragment_article_detail.xml -->
+<!-- From: file:/Users/bendix/Dev/Android/XYZReader/XYZReader/src/main/res/layout/fragment_article_detail.xml -->

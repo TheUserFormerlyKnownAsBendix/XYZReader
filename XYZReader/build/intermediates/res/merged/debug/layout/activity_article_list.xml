@@ -20,7 +20,7 @@
                 android:layout_height="match_parent"
                 android:clipToPadding="false"
                 android:scrollbarStyle="outsideOverlay"
-                android:paddingLeft="4dp"
+                android:paddingLeft="0dp"
                 android:paddingRight="8dp"
                 android:paddingBottom="16dp"
                 android:paddingTop="16dp"/>
@@ -39,4 +39,4 @@
 
     </android.support.design.widget.CoordinatorLayout>
 
-</FrameLayout><!-- From: file:/home/bendix/Dev/Android/xyzreader/XYZReader/src/main/res/layout/activity_article_list.xml -->
+</FrameLayout><!-- From: file:/Users/bendix/Dev/Android/XYZReader/XYZReader/src/main/res/layout/activity_article_list.xml -->
